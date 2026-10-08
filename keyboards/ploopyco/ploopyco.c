@@ -51,6 +51,12 @@
 #ifndef PLOOPY_DRAGSCROLL_DIVISOR_V
 #    define PLOOPY_DRAGSCROLL_DIVISOR_V 8.0
 #endif
+#ifndef PLOOPY_DRAGSCROLL_INVERT
+#    define PLOOPY_DRAGSCROLL_INVERT 1
+#endif
+#ifndef PLOOPY_DRAGSCROLL_NUM_LOCK
+#    define PLOOPY_DRAGSCROLL_NUM_LOCK 1
+#endif
 #ifndef ENCODER_BUTTON_ROW
 #    define ENCODER_BUTTON_ROW 0
 #endif
@@ -138,9 +144,29 @@ void cycle_dpi(void) {
     pointing_device_set_cpi(dpi_array[keyboard_config.dpi_config]);
 }
 
+#ifdef PLOOPY_DRAGSCROLL_NUM_LOCK
+bool is_num_lock_enabled = true;
+
+bool led_update_kb(led_t led_state) {
+    is_num_lock_enabled = led_state.num_lock;
+    return true;
+}
+#endif
+
 report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
     mouse_report = pointing_device_task_user(mouse_report);
-    if (is_drag_scroll) {
+    bool use_drag_scroll = is_drag_scroll;
+#ifdef PLOOPY_DRAGSCROLL_NUM_LOCK
+    // If NumLock is turned off (via the keyboard), force drag scroll to be
+    // enabled.  The assumption here is that NumLock will default to enabled
+    // at boot time and will be temporarily toggled off when a keyboard tap-hold
+    // is pressed and toggled back on when released.
+    if (!is_num_lock_enabled) {
+        use_drag_scroll = true;
+    }
+#endif
+
+    if (use_drag_scroll) {
         scroll_accumulated_h += (float)mouse_report.x / PLOOPY_DRAGSCROLL_DIVISOR_H;
         scroll_accumulated_v += (float)mouse_report.y / PLOOPY_DRAGSCROLL_DIVISOR_V;
 
